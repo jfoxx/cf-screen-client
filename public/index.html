@@ -5,16 +5,7 @@ const usr = 'admin';
 const password = 'admin';
 let headers = new Headers();
 headers.set('Authorization', 'Basic ' + btoa(usr + ":" + password));
-fetch('http://localhost:4502/graphql/execute.json/cbp/getScreens', {method: 'GET',
-headers: headers
-})
-.then(response => response.json())
-.then(response => {
-    console.log(response);
-    const ul = document.querySelector('#screens>ul');
-    createList(ul, response, duplicateItems)
-    duplicateItems(ul);
-});
+
 
 let state = "";
 let city = "";
@@ -40,22 +31,6 @@ function getLocation(){
   }
 }
 
-function splitLoc(tag, target){
-  const tagString = tag.split(':locations/')[1];
-  const tagArray = tagString.split('/');
-  console.log(tagArray.length);
-  const state = tagArray[0];
-  const city = tagArray[1];
-  const office = tagArray[2];
-  const display = tagArray[3];
-
-  target.setAttribute('data-state', state);
-  target.setAttribute('data-city', city);
-  target.setAttribute('data-office', office);
-  target.setAttribute('data-display', display);
-}
-
-
 function screenLabel(state, city, office, display){
   var label = document.createElement('div');
   label.className = 'screen-label';
@@ -73,6 +48,38 @@ function screenLabel(state, city, office, display){
 }
 
 getLocation();
+
+
+let previousResponse = null;
+
+async function fetchData() {
+  const response = await fetch('http://localhost:4502/graphql/execute.json/cbp/getScreens', {method: 'GET',
+  headers: headers
+  });
+  const data = await response.json();
+
+  if (previousResponse !== null) {
+    // Compare the new response with the previous one
+    if (JSON.stringify(data) !== JSON.stringify(previousResponse)) {
+      // Response has changed, do something with the new data
+      console.log("Response has changed:", data);
+      previousResponse = data; // Update previous response
+      createList(ul, data, cycleScreens);
+    } else {
+      console.log("Response is the same.");
+    }
+  } else {
+    // First fetch, initialize previousResponse
+    previousResponse = data;
+    console.log("Initial response:", data);
+    createList(ul, data, cycleScreens);
+  }
+}
+
+// Call the fetchData function to check for changes
+fetchData();
+setInterval(fetchData, 5000); // Check every 5 seconds
+
 
 
 function duplicateItems(ul){
@@ -96,14 +103,46 @@ function duplicateItems(ul){
 }
 
 function cycleScreens(ul) {
-    const screens = ul.querySelectorAll('li');
-    var screens_array = [...screens];
+      let screens = ul.querySelectorAll('li');
+      let screens_array = [...screens];
+      let max = screens_array.length;
+      let screenChild = 1;
+    setInterval(function() {
+      screens = ul.querySelectorAll('li');
+      screens_array = [...screens];
+      max = screens_array.length;
+      
+      if ( screenChild <= max ) {
+        var active = ul.querySelector(`li:nth-child(${screenChild})`);
+        active.classList.add('loaded');
+        screenChild ++;
+      } else {
+        screenChild = 1;
+        var clear = ul.querySelectorAll('li');
+        clear.forEach((i) => {
+          i.className = '';
+        });
+        var active = ul.querySelector(`li:nth-child(${screenChild})`);
+        active.classList.add('loaded');
+      }
+      
+    }, 6000);
+
+
     screens_array.forEach( function (el, index){
         var screenChild = index + 1;
-        setTimeout(function() {
+        if (screenChild + 1 > screens_array.length ) {
+          screens.forEach( i => {
+            i.classList.remove('loaded');
+            index = 0;
+          })
+        } else {
+          setTimeout(function() {
             var active = ul.querySelector(`li:nth-child(${screenChild})`);
             active.classList.add('loaded');
         }, index * 6000);
+        }
+        
 });
     
 }
@@ -112,18 +151,27 @@ function createList(ul, response, callback) {
     const items = response.data.messageList.items;
 
     items.forEach( i => {
-        var li = document.createElement('li');
-        var img = document.createElement('img');
-        var imgSrc = i.imagevideo._publishUrl;
-        img.src = imgSrc;
-        li.append(img);
-        ul.append(li);
-        if ( i.display != null) {
-          var locTag = i.display[0];
-          splitLoc(locTag, li);
-  
+
+        if ( i.display != null ) {
+          const tag = i.display[0];
+          console.log(tag);
+          const tagString = tag.split(':locations/')[1];
+          const tagArray = tagString.split('/');
+          const itemState = tagArray[0];
+          const itemCity = tagArray[1];
+          const itemOffice = tagArray[2];
+          const itemDisplay = tagArray[3];
+
+          if ( ((itemState === state) && (itemCity === undefined)) || ((itemCity === city) && (itemOffice === undefined)) || ((itemCity === city) && (itemOffice === office) && (itemDisplay === undefined)) || ((itemCity === city) && (itemOffice === office) && (itemDisplay === display))) {
+            console.log(`we have a match! Where tag is ${tag} and state is ${state}, city is ${city}, office is ${office}, and display is ${display}`);
+            var li = document.createElement('li');
+            var img = document.createElement('img');
+            var imgSrc = i.imagevideo._publishUrl;
+            img.src = imgSrc;
+            li.append(img);
+            ul.append(li);       
+          }
         }
-        
     });
 
     callback(ul);
@@ -178,8 +226,9 @@ body {
 
     span {
       padding: 10px;
-      font-size: 2rem;
+      font-size: 1rem;
       font-weight: bold;
+      text-transform: uppercase; 
     }
   }
 </style>
@@ -190,6 +239,7 @@ body {
 </ul>
 </div>
 <script>
+const ul = document.querySelector('#screens > ul');
 screenLabel(state, city, office, display);
 </script>
 </body>
