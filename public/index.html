@@ -1,0 +1,196 @@
+<html>
+<head>
+<script>
+const usr = 'admin';
+const password = 'admin';
+let headers = new Headers();
+headers.set('Authorization', 'Basic ' + btoa(usr + ":" + password));
+fetch('http://localhost:4502/graphql/execute.json/cbp/getScreens', {method: 'GET',
+headers: headers
+})
+.then(response => response.json())
+.then(response => {
+    console.log(response);
+    const ul = document.querySelector('#screens>ul');
+    createList(ul, response, duplicateItems)
+    duplicateItems(ul);
+});
+
+let state = "";
+let city = "";
+let office = "";
+let display = "";
+
+function getLocation(){
+  let params = window.location.search;
+  if (params) {
+      const prefs = new URLSearchParams(params);
+      if (prefs.has('state')) {
+          state = prefs.get('state');
+      }
+      if (prefs.has('city')) {
+          city = prefs.get('city');
+      }
+      if (prefs.has('office')) {
+          office = prefs.get('office');
+      }
+      if (prefs.has('display')) {
+        display = prefs.get('display');
+    }
+  }
+}
+
+function splitLoc(tag, target){
+  const tagString = tag.split(':locations/')[1];
+  const tagArray = tagString.split('/');
+  console.log(tagArray.length);
+  const state = tagArray[0];
+  const city = tagArray[1];
+  const office = tagArray[2];
+  const display = tagArray[3];
+
+  target.setAttribute('data-state', state);
+  target.setAttribute('data-city', city);
+  target.setAttribute('data-office', office);
+  target.setAttribute('data-display', display);
+}
+
+
+function screenLabel(state, city, office, display){
+  var label = document.createElement('div');
+  label.className = 'screen-label';
+  var stateLabel = document.createElement('span');
+  stateLabel.innerText = state;
+  var cityLabel = document.createElement('span');
+  cityLabel.innerText = city;
+  var officeLabel = document.createElement('span');
+  officeLabel.innerText = office;
+  var displayLabel = document.createElement('span');
+  displayLabel.innerText = display;
+  label.append(stateLabel, cityLabel, officeLabel, displayLabel);
+  const body = document.querySelector('body');
+  body.prepend(label);
+}
+
+getLocation();
+
+
+function duplicateItems(ul){
+    var screens = Array.prototype.slice.call(ul.querySelectorAll('li'));
+    screens.forEach( i => {
+        var li = document.createElement('li');
+        li.innerHTML = i.innerHTML;
+        ul.append(li);   
+    });
+    screens.forEach( i => {
+        var li = document.createElement('li');
+        li.innerHTML = i.innerHTML;
+        ul.append(li);   
+    });   
+    screens.forEach( i => {
+        var li = document.createElement('li');
+        li.innerHTML = i.innerHTML;
+        ul.append(li);   
+    }); 
+    cycleScreens(ul);
+}
+
+function cycleScreens(ul) {
+    const screens = ul.querySelectorAll('li');
+    var screens_array = [...screens];
+    screens_array.forEach( function (el, index){
+        var screenChild = index + 1;
+        setTimeout(function() {
+            var active = ul.querySelector(`li:nth-child(${screenChild})`);
+            active.classList.add('loaded');
+        }, index * 6000);
+});
+    
+}
+
+function createList(ul, response, callback) {
+    const items = response.data.messageList.items;
+
+    items.forEach( i => {
+        var li = document.createElement('li');
+        var img = document.createElement('img');
+        var imgSrc = i.imagevideo._publishUrl;
+        img.src = imgSrc;
+        li.append(img);
+        ul.append(li);
+        if ( i.display != null) {
+          var locTag = i.display[0];
+          splitLoc(locTag, li);
+  
+        }
+        
+    });
+
+    callback(ul);
+    
+}
+</script>
+<style>
+body {
+    background-color: black;
+    margin: 0;
+  }
+#screens > ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    height: 100vh;
+    width: 100%;
+    position: relative;
+  
+    li {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      width: 100%;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      transition: all 2s ease-in;
+
+      &.loaded {
+        opacity: 1;
+        transition: all 2s ease-in;
+      }
+  
+      img {
+        height: 100%;
+        object-fit: cover;
+        max-width: 100%;
+      }
+    }
+  }
+  div.screen-label {
+    position: absolute;
+    top: 0;
+    left: 0; 
+    display: flex;
+    background: yellow;
+    z-index: 2000;
+
+    span {
+      padding: 10px;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="screens">
+<ul>
+</ul>
+</div>
+<script>
+screenLabel(state, city, office, display);
+</script>
+</body>
+</html>
