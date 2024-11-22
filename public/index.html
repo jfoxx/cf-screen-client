@@ -62,8 +62,8 @@ async function fetchData() {
     // Compare the new response with the previous one
     if (JSON.stringify(data) !== JSON.stringify(previousResponse)) {
       // Response has changed, do something with the new data
-      console.log("Response has changed:", data);
       previousResponse = data; // Update previous response
+      purgeList(ul);
       createList(ul, data, cycleScreens);
     } else {
       console.log("Response is the same.");
@@ -145,6 +145,10 @@ function cycleScreens(ul) {
         
 });
     
+}
+
+function purgeList(ul) {
+  ul.innerHTML = '';
 }
 
 function createList(ul, response, callback) {
